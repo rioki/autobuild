@@ -1,0 +1,13 @@
+{
+    "name": "autobuild",
+    "version": "0.0.1",
+    "preferGlobal" : true,
+    "description": "continous integration on the devloper pc",
+    "author": "Sean Farrell <sean.farrell@rioki.org>",
+    "dependencies": {
+        "fs-extra": "*",
+        "optimist": "*",
+        "async": "*",
+        "appjs": "*"
+    }    
+}
