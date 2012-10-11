@@ -3,27 +3,38 @@
   <head>
     <meta charset="utf8">
     <title>Autobuild</title>
-    <link rel="stylesheet" href="/reset.css" />
-    <link rel="stylesheet" href="/main.css" />
-    <script src="/jquery-1.8.2.min.js"></script>
+    <link rel="stylesheet" href="/css/reset.css" />
+    <link rel="stylesheet" href="/css/main.css" />
+    <link rel="stylesheet" href="/css/jquery-ui-1.9.0.custom.css" />
+    <script src="/js/jquery-1.8.2.js"></script>
+    <script src="/js/jquery-ui-1.9.0.custom.js"></script>
+    <script>
+      $(function() {
+        $("#details").accordion({
+          heightStyle: "content"
+        });
+      });
+    </script>
   </head>
   <body>
     <h1>Title</h1>
-    <div id="status">Status</div>
-    <div id="build">
-      <h2>Build</h2>
-      <p id="err"></p>
-      <pre id="output"></pre>
-    </div>
-    <div id="check">
-      <h2>Check</h2>
-      <p id="err"></pre>
-      <pre id="output"></pre>
-    </div>
-    <div id="deploy">
-      <h2>Deploy</h2>
-      <p id="err"></pre>
-      <pre id="output"></pre>
+    <div id="status">Not Built</div>
+    <div id="details">
+      <h3 class="build">Build</h3>
+      <div id="build">      
+        <p>Not Built Yet</p>
+        <pre></pre>
+      </div>
+      <h3 class="check">Check</h3>
+      <div id="check">      
+        <p>Not Built Yet</p>
+        <pre></pre>
+      </div>
+      <h3 class="deploy">Deploy</h3>
+      <div id="deploy">      
+        <p>Not Built Yet</p>
+        <pre></pre>
+      </div>
     </div>
   </body>
 </html>

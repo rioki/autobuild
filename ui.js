@@ -23,123 +23,90 @@ exports.start = function (builder) {
         var $ = window.$;
         $("h1").text(builder.definition.name);
         
-        $("#status").text("Idle");
-        $("#status").addClass("undet");
-        
-        $("#build").addClass("undet");
-        $("#build p").text("Not run yet.");
-        
-        if (builder.definition.check) {
-            $("#check").addClass("undet");            
-            $("#check p").text("Not run yet.");
-        }
-        else {
+        if (! builder.definition.check) {
+            $("h1.check").hide();
             $("#check").hide();
         }
-        if (builder.definition.deploy) {
-            $("#deploy").addClass("undet");
-            $("#deploy p").text("Not run yet.");
-        }
-        else {
+        if (! builder.definition.deploy) {
+            $("h1.deploy").hide();
             $("#deploy").hide();
         }
         
         builder.on("buildStarted", function () {
-            $("#status").text("Building");
-            $("#status").removeClass();
+            $("#status").text("Build");
             $("#status").addClass("working");
             
-            $("#build").removeClass();
-            $("#build").addClass("working");
             $("#build p").text("Running");
             $("#build pre").text("");
         });
         
         builder.on("buildSucceeded", function (output) {
-            $("#status").text("Success");
-            $("#status").removeClass();
+            $("#status").removeClass("working");
+            $("#status").removeClass("error");
             $("#status").addClass("success");
             
-            $("#build").removeClass();
-            $("#build").addClass("success");
             $("#build p").text(output);
             $("#build p").text("Success");
             $("#build pre").text(output);
         });
         
         builder.on("buildFailed", function (err, output) {
-            $("#status").text("Error");
-            $("#status").removeClass();
+            $("#status").removeClass("working");
+            $("#status").removeClass("success");
             $("#status").addClass("error");
             
-            $("#build").removeClass();
-            $("#build").addClass("error");
             $("#build p").text(err);
             $("#build pre").text(output);
         });
         
         builder.on("checkStarted", function () {
-            $("#status").text("Checking");
-            $("#status").removeClass();
+            $("#status").text("Check");
             $("#status").addClass("working");
             
-            $("#check").removeClass();
-            $("#check").addClass("working");
             $("#check p").text("Running");
             $("#check pre").text("");
         });
         
         builder.on("checkSucceeded", function (output) {
-            $("#status").text("Success");
-            $("#status").removeClass();
+            $("#status").removeClass("working");
+            $("#status").removeClass("error");
             $("#status").addClass("success");
             
-            $("#check").removeClass();
-            $("#check").addClass("success");
             $("#check p").text("Success");
             $("#check pre").text(output);
         });
         
         builder.on("checkFailed", function (err, output) {
-            $("#status").text("Error");
-            $("#status").removeClass();
+            $("#status").removeClass("working");
+            $("#status").removeClass("success");
             $("#status").addClass("error");
             
-            $("#check").removeClass();
-            $("#check").addClass("error");
             $("#check p").text(err);
             $("#check pre").text(output);
         });
         
         builder.on("deployStarted", function () {
-            $("#status").text("Deploying");
-            $("#status").removeClass();
+            $("#status").text("Deploy");
             $("#status").addClass("working");
             
-            $("#deploy").removeClass();
-            $("#deploy").addClass("working");
             $("#deploy p").text("Running");
             $("#deploy pre").text("");
         });
         
         builder.on("deploySucceeded", function (output) {
-            $("#status").text("Success");
-            $("#status").removeClass();
+            $("#status").removeClass("working");
+            $("#status").removeClass("error");
             $("#status").addClass("success");
             
-            $("#deploy").removeClass();
-            $("#deploy").addClass("success");
             $("#deploy p").text("Success");
             $("#deploy pre").text(output);
         });
         
         builder.on("deployFailed", function (err, output) {
-            $("#status").text("Error");
-            $("#status").removeClass();
+            $("#status").removeClass("working");
+            $("#status").removeClass("success");
             $("#status").addClass("error");
-            
-            $("#deploy").removeClass();
-            $("#deploy").addClass("error");
+
             $("#deploy p").text(err);
             $("#deploy pre").text(output);
         });

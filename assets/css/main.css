@@ -21,33 +21,18 @@ p {
 #status {
     font-size: 200%;
     padding: 1em;
-    margin-left: 2em;
+    margin: 0.5em 2em;
     width: 5em;
     border-radius: 0.5em;
     border: 1px solid black;
-}
-
-#build, 
-#check, 
-#deploy {
-    min-height: 3em;
-    margin: 1em;
-    border: 1px solid black;
-    border-radius: 0.5em;
-    padding: 0.3em;
-    overflow: hidden;
 }
 
 .success {
     background: #97FF7D;
 }
 
-.undet {
-    background: #CCCCCC;
-}
-
 .working {
-    background: #6EA1FF;
+    opacity:0.6;
 }
 
 .error {

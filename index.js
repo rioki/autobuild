@@ -65,6 +65,8 @@ fs.readFile(defFile, "UTF-8", function (err, data) {
     
     builder.start();
     
-    ui.start(builder);
+    if (argv.gui) {
+        ui.start(builder);
+    }
     
 });
