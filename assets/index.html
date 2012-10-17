@@ -11,7 +11,8 @@
     <script>
       $(function() {
         $("#details").accordion({
-          heightStyle: "content"
+          heightStyle: "content",
+          collapsible: true
         });
       });
     </script>
@@ -19,22 +20,22 @@
   <body>
     <h1>Title</h1>
     <div id="status">Not Built</div>
-    <div id="details">
-      <h3 class="build">Build</h3>
-      <div id="build">      
+    <ul id="details">      
+      <li id="build">      
+        <h3>Build</h3>
         <p>Not Built Yet</p>
         <pre></pre>
-      </div>
-      <h3 class="check">Check</h3>
-      <div id="check">      
+      </li>      
+      <li id="check">      
+        <h3>Check</h3>
         <p>Not Built Yet</p>
         <pre></pre>
-      </div>
-      <h3 class="deploy">Deploy</h3>
-      <div id="deploy">      
+      </li>      
+      <li id="deploy">      
+        <h3>Deploy</h3>
         <p>Not Built Yet</p>
         <pre></pre>
-      </div>
-    </div>
+      </li>
+    </ul>
   </body>
 </html>
