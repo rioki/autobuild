@@ -5,37 +5,29 @@
     <title>Autobuild</title>
     <link rel="stylesheet" href="/css/reset.css" />
     <link rel="stylesheet" href="/css/main.css" />
-    <link rel="stylesheet" href="/css/jquery-ui-1.9.0.custom.css" />
     <script src="/js/jquery-1.8.2.js"></script>
-    <script src="/js/jquery-ui-1.9.0.custom.js"></script>
-    <script>
-      $(function() {
-        $("#details").accordion({
-          heightStyle: "content",
-          collapsible: true
-        });
-      });
-    </script>
   </head>
   <body>
-    <h1>Title</h1>
-    <div id="status">Not Built</div>
-    <ul id="details">      
-      <li id="build">      
-        <h3>Build</h3>
+    <header>
+      <h1>Title</h1>
+      <div id="status">Not Built</div>
+    </header>
+    <div id="details">      
+      <div id="build">      
+        <h2>Build</h3>
         <p>Not Built Yet</p>
         <pre></pre>
-      </li>      
-      <li id="check">      
-        <h3>Check</h3>
+      </div>      
+      <div id="check">      
+        <h2>Check</h3>
         <p>Not Built Yet</p>
         <pre></pre>
-      </li>      
-      <li id="deploy">      
-        <h3>Deploy</h3>
+      </div>      
+      <div id="deploy">      
+        <h2>Deploy</h2>        
         <p>Not Built Yet</p>
         <pre></pre>
-      </li>
-    </ul>
+      </div>
+    </div>
   </body>
 </html>

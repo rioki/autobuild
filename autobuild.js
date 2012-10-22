@@ -102,10 +102,11 @@ function execDeploy(def, cb) {
 }
 
 Builder.prototype.build = function () {
-    var self = this;
+    var self = this;   
     
     if (! self.building) {
         self.building = true;
+        self.buildQueued = false;
                 
         async.series([
             function (cb) {

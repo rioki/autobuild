@@ -33,7 +33,7 @@ exports.start = function (builder) {
         }
         
         builder.on("buildStarted", function () {
-            $("#status").text("Build");
+            $("#status").text("Building");
             $("#status").addClass("working");
             
             $("#build p").text("Running");
@@ -41,8 +41,9 @@ exports.start = function (builder) {
         });
         
         builder.on("buildSucceeded", function (output) {
+            $("#status").text("OK");
             $("#status").removeClass("working");
-            $("#status").removeClass("error");
+            $("#status").removeClass("error");            
             $("#status").addClass("success");
             
             $("#build p").text(output);
@@ -51,6 +52,7 @@ exports.start = function (builder) {
         });
         
         builder.on("buildFailed", function (err, output) {
+            $("#status").text("ERROR");
             $("#status").removeClass("working");
             $("#status").removeClass("success");
             $("#status").addClass("error");
@@ -60,7 +62,7 @@ exports.start = function (builder) {
         });
         
         builder.on("checkStarted", function () {
-            $("#status").text("Check");
+            $("#status").text("Checking");
             $("#status").addClass("working");
             
             $("#check p").text("Running");
@@ -68,6 +70,7 @@ exports.start = function (builder) {
         });
         
         builder.on("checkSucceeded", function (output) {
+            $("#status").text("OK");
             $("#status").removeClass("working");
             $("#status").removeClass("error");
             $("#status").addClass("success");
@@ -77,6 +80,7 @@ exports.start = function (builder) {
         });
         
         builder.on("checkFailed", function (err, output) {
+            $("#status").text("ERRORR");
             $("#status").removeClass("working");
             $("#status").removeClass("success");
             $("#status").addClass("error");
@@ -85,8 +89,8 @@ exports.start = function (builder) {
             $("#check pre").text(output);
         });
         
-        builder.on("deployStarted", function () {
-            $("#status").text("Deploy");
+        builder.on("deployStarted", function () {            
+            $("#status").text("Deplying");
             $("#status").addClass("working");
             
             $("#deploy p").text("Running");
@@ -94,6 +98,7 @@ exports.start = function (builder) {
         });
         
         builder.on("deploySucceeded", function (output) {
+            $("#status").text("OK");
             $("#status").removeClass("working");
             $("#status").removeClass("error");
             $("#status").addClass("success");
@@ -103,6 +108,7 @@ exports.start = function (builder) {
         });
         
         builder.on("deployFailed", function (err, output) {
+            $("#status").text("ERROR");
             $("#status").removeClass("working");
             $("#status").removeClass("success");
             $("#status").addClass("error");
