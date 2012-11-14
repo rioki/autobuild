@@ -76,24 +76,23 @@ Installation
 
 Autobuild uses node, you need a proper installation of node (including npm).
 
-Copy the files someplace handy for you. After this you need to invoke `npm install`
-in the root directory to get all dependencies. 
+The easiest way to install it is with npm:
 
-You probably can use npm for all that, but I haven't figured out how to do that 
-fully. (Patches and sugjestions welcome.)
+    npm install -g autobuild
 
 Usage
 -----
 
 You can either invoke it as a command line utility
 
-    node index.js autobuild.json
+    autobuild autobuild.json
   
 or with a user interface
 
-    node --harmony index.js --gui autobuild.json
+    autobuild index.js --gui autobuild.json
 
-It may be helpful to write a wrapper script for the execution. 
-(Again npm can do that for your, need to investigate it further.)
+Known Issues
+============
 
-
+* On windows not the user interface may not work because of some odd appjs shenanigans.
+  When you get the error "Error: CEF location not found" that is it. 
