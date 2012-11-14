@@ -4,6 +4,9 @@
     "preferGlobal" : true,
     "description": "continous integration on the devloper pc",
     "author": "Sean Farrell <sean.farrell@rioki.org>",
+    "bin": {
+        "autobuild": "./index.js"
+    },
     "dependencies": {
         "fs-extra": "*",
         "optimist": "*",
