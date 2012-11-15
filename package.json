@@ -12,7 +12,5 @@
         "optimist": "*",
         "async": "*",
         "appjs": "*"
-    },
-    "node": "0.8.1",
-    "flags": ["--harmony"] 
+    }
 }
