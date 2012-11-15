@@ -11,6 +11,6 @@
         "fs-extra": "*",
         "optimist": "*",
         "async": "*",
-        "appjs": "*"
+        "appjs": "0.0.19"
     }
 }
