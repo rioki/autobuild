@@ -4,6 +4,7 @@
     "preferGlobal" : true,
     "description": "continous integration on the devloper pc",
     "author": "Sean Farrell <sean.farrell@rioki.org>",
+    "license": "MIT",
     "bin": {
         "autobuild": "./index.js"
     },    
