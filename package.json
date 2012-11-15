@@ -12,5 +12,9 @@
         "optimist": "*",
         "async": "*",
         "appjs": "0.0.19"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/rioki/autobuild.git"
     }
 }
