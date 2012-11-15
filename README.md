@@ -89,7 +89,7 @@ You can either invoke it as a command line utility
   
 or with a user interface
 
-    autobuild index.js --gui autobuild.json
+    autobuild index.js autobuild.json --gui 
     
 License
 -------
