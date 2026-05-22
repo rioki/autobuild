@@ -62,9 +62,12 @@ exports.start = async function start(builder) {
     check: builder.definition.check ? "idle" : "disabled",
     deploy: builder.definition.deploy ? "idle" : "disabled"
   };
+  const visibleTasks = TASK_ORDER.filter(function (task) {
+    return taskState[task] !== "disabled";
+  });
 
   function renderPipeline() {
-    const parts = TASK_ORDER.map(function (task) {
+    const parts = visibleTasks.map(function (task) {
       const color = TASK_COLOR[taskState[task]];
       return "{" + color + "-fg}[ " + TASK_LABEL[task] + " ]{/}";
     });
