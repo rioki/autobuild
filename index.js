@@ -4,6 +4,7 @@ const fs = require("fs-extra");
 const path = require("path");
 
 const ab = require("./autobuild");
+const tui = require("./tui");
 
 async function main() {
   const argv = process.argv.slice(2);
@@ -20,50 +21,8 @@ async function main() {
   def.base = path.dirname(defFile);
 
   const builder = ab.createBuilder(def);
-
-  builder.on("buildStarted", function () {
-    console.log("Build Started");
-  });
-
-  builder.on("buildSucceeded", function (output) {
-    console.log("Build Succeeded:");
-    console.log(output);
-  });
-
-  builder.on("buildFailed", function (err, output) {
-    console.log("Build Failed: " + err.message);
-    console.log(output);
-  });
-
-  builder.on("checkStarted", function () {
-    console.log("Check Started");
-  });
-
-  builder.on("checkSucceeded", function (output) {
-    console.log("Check Succeeded:");
-    console.log(output);
-  });
-
-  builder.on("checkFailed", function (err, output) {
-    console.log("Check Failed: " + err.message);
-    console.log(output);
-  });
-
-  builder.on("deployStarted", function () {
-    console.log("Deploy Started");
-  });
-
-  builder.on("deploySucceeded", function (output) {
-    console.log("Deploy Succeeded:");
-    console.log(output);
-  });
-
-  builder.on("deployFailed", function (err, output) {
-    console.log("Deploy Failed: " + err.message);
-    console.log(output);
-  });
-
-  builder.start();
+  tui.start(builder);
+  await builder.start();
 }
 
 main().catch(function (err) {

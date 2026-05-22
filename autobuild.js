@@ -12,7 +12,17 @@ class Builder extends events.EventEmitter {
     this.watchers = [];
   }
 
-  start() {
+  async start() {
+    if (this.definition.configure) {
+      this.emit("configureStarted");
+      try {
+        const configureOutput = await execStep(this.definition.base, this.definition.configure, "configure");
+        this.emit("configureSucceeded", configureOutput);
+      } catch (err) {
+        this.emit("configureFailed", err.error, err.output);
+      }
+    }
+
     const dirs = this.definition.sources.directories;
     const patterns = regify(this.definition.sources.patterns);
 
@@ -20,7 +30,8 @@ class Builder extends events.EventEmitter {
       const fullDir = resolveAgainstBase(this.definition.base, dir);
       fs.readdir(fullDir, (err, files) => {
         if (err) {
-          throw err;
+          this.emit("watchFailed", err, "Failed to read source directory: " + fullDir);
+          return;
         }
 
         files.forEach((file) => {
@@ -36,6 +47,13 @@ class Builder extends events.EventEmitter {
         });
       });
     });
+
+    this.build();
+  }
+
+  stop() {
+    this.watchers.forEach((watcher) => watcher.close());
+    this.watchers = [];
   }
 
   async build() {

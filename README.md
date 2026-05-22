@@ -15,6 +15,8 @@ Examples
 The following example shows the autobuild definition for a make file oriented
 project.
 
+The optional `configure` step runs once on startup before file watching begins.
+
 autobuild.json:
 
     {
@@ -30,6 +32,10 @@ autobuild.json:
         "build": {            
             "cwd": "./build",
             "command": "make"
+        },
+        "configure": {
+            "cwd": "./build",
+            "command": "cmake .."
         },
         "check": {
             "cwd": "./build",
@@ -86,6 +92,9 @@ Usage
 Invoke it as a command line utility
 
     autobuild autobuild.json
+
+Autobuild always runs with a terminal UI (TUI). Start it in a normal terminal,
+then keep it running while you work.
     
 License
 -------
