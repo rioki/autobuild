@@ -1,183 +1,145 @@
-const os = require("os");
+const blessed = require("neo-blessed");
 
-const CLEAR = "\x1b[2J\x1b[H";
+const TASK_ORDER = ["configure", "build", "check", "deploy"];
+const TASK_LABEL = { configure: "Configure", build: "Build", check: "Check", deploy: "Deploy" };
+const TASK_COLOR = { idle: "gray", running: "blue", success: "green", failed: "red", disabled: "gray" };
 
-function createSection(enabled) {
-  return {
-    enabled,
-    state: enabled ? "idle" : "disabled",
-    output: ""
+exports.start = async function start(builder) {
+  const screen = blessed.screen({ smartCSR: true, title: "autobuild" });
+
+  const pipelineBox = blessed.box({
+    parent: screen,
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: 5,
+    label: " Pipeline ",
+    border: "line",
+    tags: true,
+    padding: { left: 1, right: 1 }
+  });
+
+  const pipelineText = blessed.box({
+    parent: pipelineBox,
+    top: 1,
+    left: 0,
+    width: "100%-2",
+    height: 1,
+    tags: true,
+    content: ""
+  });
+
+  const outputBox = blessed.box({
+    parent: screen,
+    top: 5,
+    left: 0,
+    width: "100%",
+    height: "100%-6",
+    label: " Output ",
+    border: "line",
+    tags: false,
+    scrollable: true,
+    alwaysScroll: true,
+    keys: true,
+    vi: true,
+    mouse: true,
+    padding: { left: 1, right: 1 }
+  });
+
+  const footer = blessed.box({
+    parent: screen,
+    bottom: 0,
+    left: 1,
+    width: "100%-2",
+    height: 1,
+    style: { fg: "gray" },
+    content: "Ctrl+C to quit"
+  });
+
+  const taskState = {
+    configure: builder.definition.configure ? "idle" : "disabled",
+    build: "idle",
+    check: builder.definition.check ? "idle" : "disabled",
+    deploy: builder.definition.deploy ? "idle" : "disabled"
   };
-}
 
-exports.start = function start(builder) {
-  const state = {
-    projectName: builder.definition.name || "Autobuild",
-    status: "Watching for changes",
-    lastUpdate: new Date(),
-    configure: createSection(Boolean(builder.definition.configure)),
-    build: createSection(true),
-    check: createSection(Boolean(builder.definition.check)),
-    deploy: createSection(Boolean(builder.definition.deploy))
-  };
-
-  let shuttingDown = false;
-
-  function render() {
-    const lines = [];
-    lines.push("Autobuild TUI");
-    lines.push("=============");
-    lines.push("Project: " + state.projectName);
-    lines.push("Status : " + state.status);
-    lines.push("Updated: " + state.lastUpdate.toLocaleTimeString());
-    lines.push("");
-    lines.push(renderSection("Configure", state.configure));
-    lines.push("");
-    lines.push(renderSection("Build", state.build));
-    lines.push("");
-    lines.push(renderSection("Check", state.check));
-    lines.push("");
-    lines.push(renderSection("Deploy", state.deploy));
-    lines.push("");
-    lines.push("Press Ctrl+C to quit.");
-
-    process.stdout.write(CLEAR + lines.join(os.EOL) + os.EOL);
+  function renderPipeline() {
+    const parts = TASK_ORDER.map(function (task) {
+      const color = TASK_COLOR[taskState[task]];
+      return "{" + color + "-fg}[ " + TASK_LABEL[task] + " ]{/}";
+    });
+    pipelineText.setContent(parts.join("  ->  "));
   }
 
-  function updateStatus(status) {
-    state.status = status;
-    state.lastUpdate = new Date();
-    render();
+  function setActiveTask(task) {
+    outputBox.setLabel(" Output - " + TASK_LABEL[task] + " ");
   }
 
-  builder.on("buildStarted", function () {
-    state.build.state = "running";
-    state.build.output = "";
-    updateStatus("Running build");
-  });
+  function setOutput(output) {
+    outputBox.setContent(output && output.trim() ? output.trim() : "(no output)");
+    outputBox.setScrollPerc(100);
+  }
 
-  builder.on("configureStarted", function () {
-    state.configure.state = "running";
-    state.configure.output = "";
-    updateStatus("Running configure");
-  });
+  function onTaskStarted(task) {
+    taskState[task] = "running";
+    setActiveTask(task);
+    setOutput("Running...");
+    renderPipeline();
+    screen.render();
+  }
 
-  builder.on("configureSucceeded", function (output) {
-    state.configure.state = "success";
-    state.configure.output = output;
-    updateStatus("Configure succeeded; watching for changes");
-  });
+  function onTaskSucceeded(task, output) {
+    taskState[task] = "success";
+    setActiveTask(task);
+    setOutput(output);
+    renderPipeline();
+    screen.render();
+  }
 
-  builder.on("configureFailed", function (err, output) {
-    state.configure.state = "failed";
-    state.configure.output = formatFailure(err, output);
-    updateStatus("Configure failed; watching for changes");
-  });
+  function onTaskFailed(task, err, output) {
+    taskState[task] = "failed";
+    setActiveTask(task);
+    const errLine = err && err.message ? err.message : String(err);
+    const body = output && output.trim() ? output.trim() : "(no output)";
+    setOutput(errLine + "\n\n" + body);
+    renderPipeline();
+    screen.render();
+  }
+
+  builder.on("configureStarted", function () { onTaskStarted("configure"); });
+  builder.on("configureSucceeded", function (output) { onTaskSucceeded("configure", output); });
+  builder.on("configureFailed", function (err, output) { onTaskFailed("configure", err, output); });
+
+  builder.on("buildStarted", function () { onTaskStarted("build"); });
+  builder.on("buildSucceeded", function (output) { onTaskSucceeded("build", output); });
+  builder.on("buildFailed", function (err, output) { onTaskFailed("build", err, output); });
+
+  builder.on("checkStarted", function () { onTaskStarted("check"); });
+  builder.on("checkSucceeded", function (output) { onTaskSucceeded("check", output); });
+  builder.on("checkFailed", function (err, output) { onTaskFailed("check", err, output); });
+
+  builder.on("deployStarted", function () { onTaskStarted("deploy"); });
+  builder.on("deploySucceeded", function (output) { onTaskSucceeded("deploy", output); });
+  builder.on("deployFailed", function (err, output) { onTaskFailed("deploy", err, output); });
 
   builder.on("watchFailed", function (err, output) {
-    const message = formatFailure(err, output);
-    state.status = "Watcher setup issue";
-    state.lastUpdate = new Date();
-    state.build.output = message;
-    render();
+    setActiveTask("build");
+    const errLine = err && err.message ? err.message : String(err);
+    setOutput(errLine + "\n\n" + (output || ""));
+    screen.render();
   });
 
-  builder.on("buildSucceeded", function (output) {
-    state.build.state = "success";
-    state.build.output = output;
-    updateStatus("Build succeeded");
-  });
-
-  builder.on("buildFailed", function (err, output) {
-    state.build.state = "failed";
-    state.build.output = formatFailure(err, output);
-    updateStatus("Build failed");
-  });
-
-  builder.on("checkStarted", function () {
-    state.check.state = "running";
-    state.check.output = "";
-    updateStatus("Running check");
-  });
-
-  builder.on("checkSucceeded", function (output) {
-    state.check.state = "success";
-    state.check.output = output;
-    updateStatus("Check succeeded");
-  });
-
-  builder.on("checkFailed", function (err, output) {
-    state.check.state = "failed";
-    state.check.output = formatFailure(err, output);
-    updateStatus("Check failed");
-  });
-
-  builder.on("deployStarted", function () {
-    state.deploy.state = "running";
-    state.deploy.output = "";
-    updateStatus("Running deploy");
-  });
-
-  builder.on("deploySucceeded", function (output) {
-    state.deploy.state = "success";
-    state.deploy.output = output;
-    updateStatus("Deploy succeeded");
-  });
-
-  builder.on("deployFailed", function (err, output) {
-    state.deploy.state = "failed";
-    state.deploy.output = formatFailure(err, output);
-    updateStatus("Deploy failed");
-  });
-
-  process.on("SIGINT", function () {
-    if (shuttingDown) {
-      return;
-    }
-    shuttingDown = true;
+  screen.key(["C-c"], function () {
     if (typeof builder.stop === "function") {
       builder.stop();
     }
-    process.stdout.write("\nStopped autobuild.\n");
+    footer.setContent("Stopping...");
+    screen.render();
+    screen.destroy();
     process.exit(0);
   });
 
-  render();
+  renderPipeline();
+  outputBox.setContent("Waiting for first run...");
+  screen.render();
 };
-
-function renderSection(title, section) {
-  if (!section.enabled) {
-    return title + ": disabled";
-  }
-
-  const summary = title + ": " + section.state;
-  const output = summarizeOutput(section.output);
-  if (!output) {
-    return summary;
-  }
-  return summary + "\n  " + output.replace(/\n/g, "\n  ");
-}
-
-function summarizeOutput(output) {
-  if (!output) {
-    return "";
-  }
-
-  const trimmed = output.trim();
-  if (!trimmed) {
-    return "";
-  }
-
-  const lines = trimmed.split(/\r?\n/);
-  const lastLines = lines.slice(-8);
-  return lastLines.join("\n");
-}
-
-function formatFailure(err, output) {
-  const message = err && err.message ? err.message : String(err);
-  const commandOutput = output ? output.trim() : "";
-  if (!commandOutput) {
-    return message;
-  }
-  return message + "\n" + commandOutput;
-}

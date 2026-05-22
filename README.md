@@ -93,8 +93,10 @@ Invoke it as a command line utility
 
     autobuild autobuild.json
 
-Autobuild always runs with a terminal UI (TUI). Start it in a normal terminal,
-then keep it running while you work.
+Autobuild always runs with a terminal UI (TUI). The top row shows
+the pipeline state (`configure -> build -> check -> deploy`) using gray (idle),
+blue (running), green (success), and red (failed). The lower pane shows the
+output of the currently running or last finished task.
     
 License
 -------

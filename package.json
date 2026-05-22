@@ -15,7 +15,8 @@
     "start": "node ./index.js"
   },
   "dependencies": {
-    "fs-extra": "^11.3.2"
+    "fs-extra": "^11.3.2",
+    "neo-blessed": "^0.2.0"
   },
   "repository": {
     "type": "git",
