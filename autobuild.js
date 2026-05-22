@@ -1,178 +1,147 @@
+const fs = require("fs-extra");
+const path = require("path");
+const events = require("events");
+const cp = require("child_process");
 
-var fs     = require("fs-extra");
-var path   = require("path");
-var events = require('events');
-var async  = require('async');
-var cp     = require("child_process");
-
-function Builder(definition) {
-    events.EventEmitter.call(this);
-    
-    this.definition  = definition;
-    this.building    = false;
+class Builder extends events.EventEmitter {
+  constructor(definition) {
+    super();
+    this.definition = definition;
+    this.building = false;
     this.buildQueued = false;
-}
+    this.watchers = [];
+  }
 
-Builder.super_ = events.EventEmitter;
-Builder.prototype = Object.create(events.EventEmitter.prototype, {
-    constructor: {
-        value: Builder,
-        enumerable: false
+  start() {
+    const dirs = this.definition.sources.directories;
+    const patterns = regify(this.definition.sources.patterns);
+
+    dirs.forEach((dir) => {
+      const fullDir = resolveAgainstBase(this.definition.base, dir);
+      fs.readdir(fullDir, (err, files) => {
+        if (err) {
+          throw err;
+        }
+
+        files.forEach((file) => {
+          if (!matchesAnyPattern(file, patterns)) {
+            return;
+          }
+
+          const fullFile = path.join(fullDir, file);
+          const watcher = fs.watch(fullFile, () => {
+            this.build();
+          });
+          this.watchers.push(watcher);
+        });
+      });
+    });
+  }
+
+  async build() {
+    if (this.building) {
+      this.buildQueued = true;
+      return;
     }
-});
+
+    this.building = true;
+    this.buildQueued = false;
+
+    try {
+      this.emit("buildStarted");
+      const buildOutput = await execStep(this.definition.base, this.definition.build, "build");
+      this.emit("buildSucceeded", buildOutput);
+
+      if (this.definition.check) {
+        this.emit("checkStarted");
+        const checkOutput = await execStep(this.definition.base, this.definition.check, "check");
+        this.emit("checkSucceeded", checkOutput);
+      }
+
+      if (this.definition.deploy) {
+        this.emit("deployStarted");
+        const deployOutput = await execDeploy(this.definition.base, this.definition.deploy);
+        this.emit("deploySucceeded", deployOutput);
+      }
+    } catch (err) {
+      if (err.stage === "build") {
+        this.emit("buildFailed", err.error, err.output);
+      } else if (err.stage === "check") {
+        this.emit("checkFailed", err.error, err.output);
+      } else if (err.stage === "deploy") {
+        this.emit("deployFailed", err.error, err.output);
+      }
+    } finally {
+      this.building = false;
+      if (this.buildQueued) {
+        this.build();
+      }
+    }
+  }
+}
 
 function regify(patterns) {
-    var result = [];
-    patterns.forEach(function (pattern) {
-        result.push(new RegExp(pattern, "i"));
-    });
-    return result;
+  return patterns.map((pattern) => new RegExp(pattern, "i"));
 }
 
-this.__defineGetter__("idle", function() {
-    return status[BUILD] == IDLE && status[CHECK] == IDLE &&  status[DEPLOY] == IDLE;
-});
-
-Builder.prototype.start = function () {
-    var self = this;
-    
-    var dirs     = self.definition.sources.directories;
-    var patterns = regify(self.definition.sources.patterns);
-    
-    var i = dirs.length;
-    dirs.forEach(function (dir) {
-        fs.readdir(dir, function (err, files) {
-            if (err) {
-                throw err;
-            }
-            
-            files.forEach(function (file) {
-                patterns.forEach(function (pattern) {
-                    if (file.match(pattern)) {
-                        // TODO path relative to the autobuild.json
-                        var fullFile = path.join(dir, file);                        
-                        fs.watchFile(fullFile, function () {                            
-                            self.build();
-                        });
-                    }
-                });
-            });            
-        });
-    });
+function matchesAnyPattern(file, patterns) {
+  return patterns.some((pattern) => pattern.test(file));
 }
 
-function execBuild(def, cb) {
-    cp.exec(def.command, { cwd: def.cwd }, function (err, stdout, stderr) {
-        cb(err, stdout);
-    });
+function resolveAgainstBase(baseDir, maybeRelativePath) {
+  if (path.isAbsolute(maybeRelativePath)) {
+    return maybeRelativePath;
+  }
+  return path.resolve(baseDir, maybeRelativePath);
 }
 
-function execCheck(def, cb) {
-    cp.exec(def.command, { cwd: def.cwd }, function (err, stdout, stderr) {
-        // REVIEW what about stderr?
-        cb(err, stdout);
+function execStep(baseDir, def, stage) {
+  const cwd = resolveAgainstBase(baseDir, def.cwd);
+  return new Promise((resolve, reject) => {
+    cp.exec(def.command, { cwd }, (error, stdout, stderr) => {
+      const output = [stdout, stderr].filter(Boolean).join("\n").trim();
+      if (error) {
+        reject({ stage, error, output });
+        return;
+      }
+      resolve(output);
     });
+  });
 }
 
-function execDeploy(def, cb) {
-    if (def.command) {
-        cp.exec(def.command, { cwd: def.cwd }, function (err, stdout, stderr) {
-            // REVIEW what about stderr?
-            cb(err, stdout);
-        });
+function execDeploy(baseDir, def) {
+  if (def.command) {
+    return execStep(baseDir, def, "deploy").catch((err) => {
+      err.stage = "deploy";
+      throw err;
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    let pending = def.files.length;
+    if (pending === 0) {
+      resolve("No files configured for deploy.");
+      return;
     }
-    else {
-        var count = def.files.length;
-        def.files.forEach(function (file) {
-            var filePath = path.join(def.source, file);
-            var targetPath = path.join(def.target, file);
-            fs.copy(filePath, targetPath, function (err) {
-                if (err) {                             
-                    cb(err, "Failed to copy " + file + ".");                    
-                }
-                else {
-                    count--;
-                    if (count == 0) {
-                        cb(null, "Copied " + def.files + ".");
-                    }
-                }
-            });
-        });
-    }
-}
 
-Builder.prototype.build = function () {
-    var self = this;   
-    
-    if (! self.building) {
-        self.building = true;
-        self.buildQueued = false;
-                
-        async.series([
-            function (cb) {
-                self.emit("buildStarted");
-                execBuild(self.definition.build, function (err, output) {
-                    if (err) {
-                        self.emit("buildFailed", err, output);
-                        cb(err);
-                    }
-                    else {
-                        self.emit("buildSucceeded", output);
-                        cb(null, output);
-                    }
-                });
-            }, 
-            function (cb) {
-                // check is optional
-                if (self.definition.check) {
-                    self.emit("checkStarted");
-                    execCheck(self.definition.check, function (err, output) {
-                        if (err) {
-                        self.emit("checkFailed", err, output);
-                        cb(err);
-                        }
-                        else {
-                            self.emit("checkSucceeded", output);
-                            cb(null, output);
-                        }
-                    });
-                }
-                else {
-                    cb(null, null);
-                }
-            },
-            function (cb) {
-                // deploy is optional
-                if (self.definition.deploy) {
-                    self.emit("deployStarted");
-                    execDeploy(self.definition.deploy, function (err, output) {
-                        if (err) {
-                            self.emit("deployFailed", err, output);
-                            cb(err);
-                        }
-                        else {
-                            self.emit("deploySucceeded", output);
-                            cb(null, output);
-                        }
-                    });
-                }
-                else {
-                    cb(null, null);
-                }
-            }
-        ], function (err, outputs) {
-            self.building = false;
-            if (self.buildQueued) {
-                self.build();
-            }
-        });        
-    }
-    else {
-        self.buildQueued = true;
-    }    
+    def.files.forEach((file) => {
+      const filePath = resolveAgainstBase(baseDir, path.join(def.source, file));
+      const targetPath = resolveAgainstBase(baseDir, path.join(def.target, file));
+
+      fs.copy(filePath, targetPath, (err) => {
+        if (err) {
+          reject({ stage: "deploy", error: err, output: "Failed to copy " + file + "." });
+          return;
+        }
+        pending -= 1;
+        if (pending === 0) {
+          resolve("Copied " + def.files.join(", ") + ".");
+        }
+      });
+    });
+  });
 }
 
 exports.createBuilder = function (def) {
-    
-    return new Builder(def);
-}
+  return new Builder(def);
+};

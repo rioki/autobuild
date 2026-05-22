@@ -1,21 +1,24 @@
 {
-    "name": "autobuild",
-    "version": "0.0.2",
-    "preferGlobal" : true,
-    "description": "continous integration on the devloper pc",
-    "author": "Sean Farrell <sean.farrell@rioki.org>",
-    "license": "MIT",
-    "bin": {
-        "autobuild": "./index.js"
-    },    
-    "dependencies": {
-        "fs-extra": "*",
-        "optimist": "*",
-        "async": "*",
-        "appjs": "0.0.19"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/rioki/autobuild.git"
-    }
+  "name": "autobuild",
+  "version": "0.1.0",
+  "description": "Continuous integration on the developer PC",
+  "author": "Sean Farrell <sean.farrell@rioki.org>",
+  "license": "MIT",
+  "bin": {
+    "autobuild": "./index.js"
+  },
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node ./index.js"
+  },
+  "dependencies": {
+    "fs-extra": "^11.3.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rioki/autobuild.git"
+  }
 }

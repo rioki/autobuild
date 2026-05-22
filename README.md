@@ -74,7 +74,7 @@ autobuild.json:
 Installation
 ------------
 
-Autobuild uses node, you need a proper installation of node (including npm).
+Autobuild requires Node.js 18 or newer.
 
 The easiest way to install it is with npm:
 
@@ -83,13 +83,9 @@ The easiest way to install it is with npm:
 Usage
 -----
 
-You can either invoke it as a command line utility
+Invoke it as a command line utility
 
     autobuild autobuild.json
-  
-or with a user interface
-
-    autobuild index.js autobuild.json --gui 
     
 License
 -------
