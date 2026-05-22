@@ -7,10 +7,6 @@
   "bin": {
     "autobuild": "./index.js"
   },
-  "type": "commonjs",
-  "engines": {
-    "node": ">=18"
-  },
   "scripts": {
     "start": "node ./index.js"
   },
