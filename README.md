@@ -44,6 +44,10 @@ autobuild.json:
         "deploy": {
             "cwd": "./build",
             "command": "make install"
+        },
+        "run": {
+            "cwd": "./build",
+            "command": "./my_app"
         }
     }
     
@@ -94,9 +98,11 @@ Invoke it as a command line utility
     autobuild autobuild.json
 
 Autobuild always runs with a terminal UI (TUI). The top row shows
-the pipeline state (`configure -> build -> check -> deploy`) using gray (idle),
+the pipeline state (`configure -> build -> check -> deploy -> run`) using gray (idle),
 blue (running), green (success), and red (failed). The lower pane shows the
 output of the currently running or last finished task.
+
+If a `run` step is configured, press Ctrl+R to trigger it manually.
     
 License
 -------

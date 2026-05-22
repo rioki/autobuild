@@ -3,12 +3,16 @@ const path = require("path");
 const events = require("events");
 const cp = require("child_process");
 
+let scriptCommandAvailable;
+
 class Builder extends events.EventEmitter {
   constructor(definition) {
     super();
     this.definition = definition;
     this.building = false;
+    this.running = false;
     this.buildQueued = false;
+    this.runQueued = false;
     this.watchers = [];
   }
 
@@ -16,7 +20,9 @@ class Builder extends events.EventEmitter {
     if (this.definition.configure) {
       this.emit("configureStarted");
       try {
-        const configureOutput = await execStep(this.definition.base, this.definition.configure, "configure");
+        const configureOutput = await execStep(this.definition.base, this.definition.configure, "configure", (stream, chunk) => {
+          this.emit("taskOutput", { task: "configure", stream, chunk });
+        });
         this.emit("configureSucceeded", configureOutput);
       } catch (err) {
         this.emit("configureFailed", err.error, err.output);
@@ -57,7 +63,7 @@ class Builder extends events.EventEmitter {
   }
 
   async build() {
-    if (this.building) {
+    if (this.building || this.running) {
       this.buildQueued = true;
       return;
     }
@@ -67,18 +73,24 @@ class Builder extends events.EventEmitter {
 
     try {
       this.emit("buildStarted");
-      const buildOutput = await execStep(this.definition.base, this.definition.build, "build");
+      const buildOutput = await execStep(this.definition.base, this.definition.build, "build", (stream, chunk) => {
+        this.emit("taskOutput", { task: "build", stream, chunk });
+      });
       this.emit("buildSucceeded", buildOutput);
 
       if (this.definition.check) {
         this.emit("checkStarted");
-        const checkOutput = await execStep(this.definition.base, this.definition.check, "check");
+        const checkOutput = await execStep(this.definition.base, this.definition.check, "check", (stream, chunk) => {
+          this.emit("taskOutput", { task: "check", stream, chunk });
+        });
         this.emit("checkSucceeded", checkOutput);
       }
 
       if (this.definition.deploy) {
         this.emit("deployStarted");
-        const deployOutput = await execDeploy(this.definition.base, this.definition.deploy);
+        const deployOutput = await execDeploy(this.definition.base, this.definition.deploy, (stream, chunk) => {
+          this.emit("taskOutput", { task: "deploy", stream, chunk });
+        });
         this.emit("deploySucceeded", deployOutput);
       }
     } catch (err) {
@@ -91,9 +103,49 @@ class Builder extends events.EventEmitter {
       }
     } finally {
       this.building = false;
-      if (this.buildQueued) {
-        this.build();
-      }
+      this.drainQueue();
+    }
+  }
+
+  async run() {
+    if (!this.definition.run) {
+      return;
+    }
+
+    if (this.building || this.running) {
+      this.runQueued = true;
+      return;
+    }
+
+    this.running = true;
+    this.runQueued = false;
+
+    try {
+      this.emit("runStarted");
+      const runOutput = await execStep(this.definition.base, this.definition.run, "run", (stream, chunk) => {
+        this.emit("taskOutput", { task: "run", stream, chunk });
+      });
+      this.emit("runSucceeded", runOutput);
+    } catch (err) {
+      this.emit("runFailed", err.error, err.output);
+    } finally {
+      this.running = false;
+      this.drainQueue();
+    }
+  }
+
+  drainQueue() {
+    if (this.building || this.running) {
+      return;
+    }
+    if (this.buildQueued) {
+      this.buildQueued = false;
+      this.build();
+      return;
+    }
+    if (this.runQueued) {
+      this.runQueued = false;
+      this.run();
     }
   }
 }
@@ -113,12 +165,38 @@ function resolveAgainstBase(baseDir, maybeRelativePath) {
   return path.resolve(baseDir, maybeRelativePath);
 }
 
-function execStep(baseDir, def, stage) {
+function execStep(baseDir, def, stage, onOutput) {
   const cwd = resolveAgainstBase(baseDir, def.cwd);
   return new Promise((resolve, reject) => {
-    cp.exec(def.command, { cwd }, (error, stdout, stderr) => {
-      const output = [stdout, stderr].filter(Boolean).join("\n").trim();
-      if (error) {
+    const command = shouldUsePseudoTerminal() ? wrapWithScript(def.command) : def.command;
+    const child = cp.spawn(command, { cwd, shell: true });
+    let mergedOutput = "";
+
+    child.stdout.on("data", (chunk) => {
+      const text = chunk.toString();
+      mergedOutput += text;
+      if (onOutput) {
+        onOutput("stdout", text);
+      }
+    });
+
+    child.stderr.on("data", (chunk) => {
+      const text = chunk.toString();
+      mergedOutput += text;
+      if (onOutput) {
+        onOutput("stderr", text);
+      }
+    });
+
+    child.on("error", (error) => {
+      const output = mergedOutput.trim();
+      reject({ stage, error, output });
+    });
+
+    child.on("close", (code) => {
+      const output = mergedOutput.trim();
+      if (code !== 0) {
+        const error = new Error("Command failed with exit code " + code);
         reject({ stage, error, output });
         return;
       }
@@ -127,9 +205,32 @@ function execStep(baseDir, def, stage) {
   });
 }
 
-function execDeploy(baseDir, def) {
+function shouldUsePseudoTerminal() {
+  if (scriptCommandAvailable !== undefined) {
+    return scriptCommandAvailable;
+  }
+
+  try {
+    const probe = cp.spawnSync("script", ["-q", "-c", "true", "/dev/null"], { stdio: "ignore" });
+    scriptCommandAvailable = probe.status === 0;
+  } catch (err) {
+    scriptCommandAvailable = false;
+  }
+
+  return scriptCommandAvailable;
+}
+
+function wrapWithScript(command) {
+  return "script -q -e -c " + shellQuote(command) + " /dev/null";
+}
+
+function shellQuote(value) {
+  return "'" + String(value).replace(/'/g, "'\\''") + "'";
+}
+
+function execDeploy(baseDir, def, onOutput) {
   if (def.command) {
-    return execStep(baseDir, def, "deploy").catch((err) => {
+    return execStep(baseDir, def, "deploy", onOutput).catch((err) => {
       err.stage = "deploy";
       throw err;
     });

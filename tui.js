@@ -1,7 +1,7 @@
 const blessed = require("neo-blessed");
 
-const TASK_ORDER = ["configure", "build", "check", "deploy"];
-const TASK_LABEL = { configure: "Configure", build: "Build", check: "Check", deploy: "Deploy" };
+const TASK_ORDER = ["configure", "build", "check", "deploy", "run"];
+const TASK_LABEL = { configure: "Configure", build: "Build", check: "Check", deploy: "Deploy", run: "Run" };
 const TASK_COLOR = { idle: "gray", running: "blue", success: "green", failed: "red", disabled: "gray" };
 
 exports.start = async function start(builder) {
@@ -53,18 +53,22 @@ exports.start = async function start(builder) {
     width: "100%-2",
     height: 1,
     style: { fg: "gray" },
-    content: "Ctrl+C to quit"
+    content: builder.definition.run ? "Ctrl+R to run, Ctrl+C to quit" : "Ctrl+C to quit"
   });
 
   const taskState = {
     configure: builder.definition.configure ? "idle" : "disabled",
     build: "idle",
     check: builder.definition.check ? "idle" : "disabled",
-    deploy: builder.definition.deploy ? "idle" : "disabled"
+    deploy: builder.definition.deploy ? "idle" : "disabled",
+    run: builder.definition.run ? "idle" : "disabled"
   };
   const visibleTasks = TASK_ORDER.filter(function (task) {
     return taskState[task] !== "disabled";
   });
+  let currentTask = null;
+  let outputBuffer = "";
+  let sawStreamForCurrentTask = false;
 
   function renderPipeline() {
     const parts = visibleTasks.map(function (task) {
@@ -75,17 +79,35 @@ exports.start = async function start(builder) {
   }
 
   function setActiveTask(task) {
+    currentTask = task;
     outputBox.setLabel(" Output - " + TASK_LABEL[task] + " ");
   }
 
   function setOutput(output) {
-    outputBox.setContent(output && output.trim() ? output.trim() : "(no output)");
+    outputBuffer = output && output.trim() ? output : "(no output)";
+    outputBox.setContent(outputBuffer.trim ? outputBuffer.trim() : outputBuffer);
+    outputBox.setScrollPerc(100);
+  }
+
+  function appendOutput(chunk) {
+    if (!chunk) {
+      return;
+    }
+    if (outputBuffer === "(no output)" || outputBuffer === "Running...") {
+      outputBuffer = "";
+    }
+    outputBuffer += chunk;
+    if (outputBuffer.length > 120000) {
+      outputBuffer = outputBuffer.slice(-120000);
+    }
+    outputBox.setContent(outputBuffer || "(no output)");
     outputBox.setScrollPerc(100);
   }
 
   function onTaskStarted(task) {
     taskState[task] = "running";
     setActiveTask(task);
+    sawStreamForCurrentTask = false;
     setOutput("Running...");
     renderPipeline();
     screen.render();
@@ -94,7 +116,9 @@ exports.start = async function start(builder) {
   function onTaskSucceeded(task, output) {
     taskState[task] = "success";
     setActiveTask(task);
-    setOutput(output);
+    if (!sawStreamForCurrentTask) {
+      setOutput(output);
+    }
     renderPipeline();
     screen.render();
   }
@@ -103,8 +127,12 @@ exports.start = async function start(builder) {
     taskState[task] = "failed";
     setActiveTask(task);
     const errLine = err && err.message ? err.message : String(err);
-    const body = output && output.trim() ? output.trim() : "(no output)";
-    setOutput(errLine + "\n\n" + body);
+    if (sawStreamForCurrentTask) {
+      appendOutput("\n\n" + errLine + "\n");
+    } else {
+      const body = output && output.trim() ? output.trim() : "(no output)";
+      setOutput(body + "\n\n" + errLine);
+    }
     renderPipeline();
     screen.render();
   }
@@ -129,6 +157,33 @@ exports.start = async function start(builder) {
     setActiveTask("build");
     const errLine = err && err.message ? err.message : String(err);
     setOutput(errLine + "\n\n" + (output || ""));
+    screen.render();
+  });
+
+  builder.on("runStarted", function () { onTaskStarted("run"); });
+  builder.on("runSucceeded", function (output) { onTaskSucceeded("run", output); });
+  builder.on("runFailed", function (err, output) { onTaskFailed("run", err, output); });
+
+  builder.on("taskOutput", function (event) {
+    if (!event || !event.task || !event.chunk) {
+      return;
+    }
+    if (currentTask !== event.task) {
+      setActiveTask(event.task);
+      sawStreamForCurrentTask = false;
+      setOutput("");
+    }
+    sawStreamForCurrentTask = true;
+    appendOutput(event.chunk);
+    screen.render();
+  });
+
+  screen.key(["C-r"], function () {
+    if (builder.definition.run) {
+      builder.run();
+      return;
+    }
+    setOutput("No run task configured.");
     screen.render();
   });
 
